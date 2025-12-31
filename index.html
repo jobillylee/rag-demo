@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>취업규칙 검색 챗봇</title>
+  <title>사내 문서 검색 챗봇</title>
 
   <style>
     :root{
@@ -33,19 +33,46 @@
     .app { height: 100%; display: flex; flex-direction: column; }
 
     header {
-      position: sticky;
-      top: 0;
-      z-index: 10;
+      position: sticky; top: 0; z-index: 10;
       background: rgba(246,247,251,.92);
       backdrop-filter: blur(8px);
       border-bottom: 1px solid var(--line);
       padding: calc(14px + var(--safe-top)) 14px 12px;
     }
 
-    .title { font-size: 20px; font-weight: 800; margin: 0; line-height: 1.2; }
+    .wrap { width: 100%; max-width: 900px; margin: 0 auto; }
+
+    .headRow{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+    }
+
+    .title {
+      font-size: 20px;
+      font-weight: 800;
+      margin: 0;
+      line-height: 1.2;
+    }
     .status { margin-top: 6px; font-size: 13px; color: var(--muted); }
 
-    .wrap { width: 100%; max-width: 900px; margin: 0 auto; }
+    .tools{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+    .btnGhost{
+      border:1px solid var(--line);
+      background:#fff;
+      color:#111827;
+      padding:10px 12px;
+      border-radius:12px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow: var(--shadow);
+      white-space:nowrap;
+    }
 
     main {
       flex: 1;
@@ -54,33 +81,28 @@
     }
 
     .chat { display: flex; flex-direction: column; gap: 10px; }
+
     .row { display: flex; width: 100%; }
     .row.user { justify-content: flex-end; }
     .row.bot { justify-content: flex-start; }
 
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      width: 100%;
-    }
-    .row.user .msg { align-items: flex-end; }
-    .row.bot .msg { align-items: flex-start; }
+    .msg { display:flex; flex-direction:column; gap:4px; max-width: 92%; }
+    .row.user .msg { align-items:flex-end; }
+    .row.bot  .msg { align-items:flex-start; }
 
     .bubble {
       display: inline-block;
-      width: fit-content;
-      max-width: 90%;
+      width: auto;
+      max-width: min(78ch, 92%);
       padding: 10px 12px;
       border-radius: var(--radius);
       border: 1px solid var(--bot-line);
       background: var(--bot-bg);
       white-space: pre-wrap;
-      line-height: 1.4;
+      line-height: 1.35;
       box-shadow: var(--shadow);
-
       word-break: keep-all;
-      overflow-wrap: break-word;
+      overflow-wrap: anywhere;
     }
 
     .row.user .bubble {
@@ -109,13 +131,12 @@
       padding: 10px 14px calc(10px + var(--safe-bottom));
     }
 
-    .composer .bar { display: flex; gap: 10px; align-items: flex-end; }
+    .composer .bar { display:flex; gap:10px; align-items:stretch; }
 
     textarea {
       flex: 1;
-      height: 48px;
-      min-height: 48px;
-      max-height: 120px;
+      min-height: 46px;
+      max-height: 140px;
       resize: none;
       border-radius: 14px;
       border: 1px solid var(--line);
@@ -123,6 +144,7 @@
       font-size: 16px;
       outline: none;
       background: #fff;
+      line-height: 1.25;
     }
 
     textarea:focus {
@@ -130,26 +152,26 @@
       box-shadow: 0 0 0 4px rgba(184,199,255,.35);
     }
 
-    button {
-      height: 48px;
-      padding: 0 16px;
+    button.send {
       border: 0;
       border-radius: 14px;
+      padding: 12px 14px;
       font-size: 15px;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
       background: #111827;
       color: #fff;
       min-width: 72px;
     }
-
-    button:disabled { opacity: .55; cursor: not-allowed; }
+    button.send:disabled { opacity: .55; cursor: not-allowed; }
 
     @media (max-width: 480px) {
       .title { font-size: 18px; }
       main { padding: 12px 12px calc(92px + var(--safe-bottom)); }
-      textarea { font-size: 16px; }
       .bubble { max-width: 94%; }
+      textarea { font-size: 16px; }
+      button.send { min-width: 64px; padding: 12px 12px; }
+      .btnGhost{ padding:10px 10px; }
     }
   </style>
 </head>
@@ -158,8 +180,15 @@
   <div class="app">
     <header>
       <div class="wrap">
-        <h1 class="title">취업규칙 검색 챗봇</h1>
-        <div class="status" id="status">대기 중…</div>
+        <div class="headRow">
+          <div>
+            <h1 class="title">사내 문서 검색 챗봇</h1>
+            <div class="status" id="status">대기 중…</div>
+          </div>
+          <div class="tools">
+            <button class="btnGhost" id="clear">대화 삭제</button>
+          </div>
+        </div>
       </div>
     </header>
 
@@ -175,8 +204,8 @@
     <div class="composer">
       <div class="wrap">
         <div class="bar">
-          <textarea id="q" placeholder="질문을 입력하세요"></textarea>
-          <button id="send">전송</button>
+          <textarea id="q" placeholder="질문을 입력하세요 (Enter=전송 / Shift+Enter=줄바꿈)"></textarea>
+          <button class="send" id="send">전송</button>
         </div>
       </div>
     </div>
@@ -186,25 +215,27 @@
     // ✅ n8n Production Webhook URL
     const WEBHOOK_URL = "https://billylee.app.n8n.cloud/webhook/ask";
 
+    // ✅ 저장 키 (로컬 UI용)
+    const STORAGE_KEY = "rag_demo_chat_v1";
+
+    // ✅ 대화ID: DB 저장용 (브라우저마다 고정)
+    const CONV_KEY = "conversation_id";
+    const conversationId =
+      localStorage.getItem(CONV_KEY) ||
+      ((window.crypto && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now()));
+    localStorage.setItem(CONV_KEY, conversationId);
+
     const mainEl = document.getElementById("main");
     const chatEl = document.getElementById("chat");
     const emptyEl = document.getElementById("empty");
     const qEl = document.getElementById("q");
     const sendBtn = document.getElementById("send");
     const statusEl = document.getElementById("status");
+    const clearBtn = document.getElementById("clear");
 
-    // ✅ sessionId 생성/유지: 같은 브라우저면 계속 같은 세션으로 저장됨
-    function getSessionId() {
-      const key = "rag_demo_session_id";
-      let sid = localStorage.getItem(key);
-      if (!sid) {
-        // crypto.randomUUID() 지원 안 하는 브라우저 대비
-        const fallback = "sess_" + Math.random().toString(16).slice(2) + "_" + Date.now();
-        sid = (window.crypto && crypto.randomUUID) ? ("sess_" + crypto.randomUUID()) : fallback;
-        localStorage.setItem(key, sid);
-      }
-      return sid;
-    }
+    // ✅ 메모리(화면)에서 관리할 채팅 배열
+    // item = { role: "user"|"bot", text: string, ts: number }
+    let chats = [];
 
     function formatTime(ts) {
       const d = new Date(ts);
@@ -213,44 +244,71 @@
       return `${hh}:${mm}`;
     }
 
+    function saveChats() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(chats));
+    }
+
+    function loadChats() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed;
+      } catch {
+        return [];
+      }
+    }
+
     function scrollToBottom() {
       requestAnimationFrame(() => {
         mainEl.scrollTop = mainEl.scrollHeight;
       });
     }
 
-    function addMessage(role, text) {
+    function renderAll() {
+      chatEl.innerHTML = "";
+      if (!chats.length) {
+        emptyEl.style.display = "block";
+        return;
+      }
       emptyEl.style.display = "none";
 
-      const row = document.createElement("div");
-      row.className = "row " + role;
+      for (const item of chats) {
+        const row = document.createElement("div");
+        row.className = "row " + item.role;
 
-      const msg = document.createElement("div");
-      msg.className = "msg";
+        const msg = document.createElement("div");
+        msg.className = "msg";
 
-      const bubble = document.createElement("div");
-      bubble.className = "bubble";
-      bubble.textContent = text;
+        const bubble = document.createElement("div");
+        bubble.className = "bubble";
+        bubble.textContent = item.text;
 
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.textContent = `${role === "user" ? "나" : "봇"} · ${formatTime(Date.now())}`;
+        const meta = document.createElement("div");
+        meta.className = "meta";
+        meta.textContent = `${item.role === "user" ? "나" : "봇"} · ${formatTime(item.ts)}`;
 
-      msg.appendChild(bubble);
-      msg.appendChild(meta);
-      row.appendChild(msg);
-      chatEl.appendChild(row);
+        msg.appendChild(bubble);
+        msg.appendChild(meta);
+        row.appendChild(msg);
+        chatEl.appendChild(row);
+      }
 
       scrollToBottom();
+    }
+
+    function pushMessage(role, text) {
+      chats.push({ role, text, ts: Date.now() });
+      saveChats();
+      renderAll();
     }
 
     async function send() {
       const question = (qEl.value || "").trim();
       if (!question) return;
 
-      const sessionId = getSessionId();
-
-      addMessage("user", question);
+      pushMessage("user", question);
       qEl.value = "";
       statusEl.textContent = "전송 중…";
       sendBtn.disabled = true;
@@ -259,22 +317,24 @@
         const res = await fetch(WEBHOOK_URL, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ question, sessionId })
+          body: JSON.stringify({
+            question,
+            userId: "web-test-user",
+            conversationId
+          })
         });
 
         const raw = await res.text();
         if (!res.ok) throw new Error(`HTTP ${res.status} - ${raw}`);
 
         let data;
-        // 혹시 n8n이 이상하게 '=' 붙여 보내도 안전하게 처리
-        const cleaned = raw.trim().replace(/^=\s*/, "");
-        try { data = JSON.parse(cleaned); }
-        catch { data = { answer: cleaned }; }
+        try { data = JSON.parse(raw); }
+        catch { data = { answer: raw }; }
 
-        addMessage("bot", data.answer ?? "(answer 없음)");
+        pushMessage("bot", data.answer ?? "(answer 없음)");
         statusEl.textContent = "완료";
       } catch (err) {
-        addMessage("bot", "에러: " + String(err.message || err));
+        pushMessage("bot", "에러: " + String(err.message || err));
         statusEl.textContent = "에러 발생";
       } finally {
         sendBtn.disabled = false;
@@ -284,7 +344,6 @@
 
     sendBtn.addEventListener("click", send);
 
-    // Enter=전송, Shift+Enter=줄바꿈
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -292,7 +351,18 @@
       }
     });
 
-    if (!chatEl.children.length) emptyEl.style.display = "block";
+    clearBtn.addEventListener("click", () => {
+      if (!confirm("대화 기록을 모두 삭제할까요?\n(로컬 화면 기록만 삭제됩니다)")) return;
+      chats = [];
+      localStorage.removeItem(STORAGE_KEY);
+      renderAll();
+      statusEl.textContent = "대기 중…";
+      qEl.focus();
+    });
+
+    // ✅ 최초 로드 시: 저장된 채팅 복원
+    chats = loadChats();
+    renderAll();
   </script>
 </body>
 </html>
