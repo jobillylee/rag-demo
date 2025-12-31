@@ -8,7 +8,6 @@
   <style>
     :root{
       --bg: #f6f7fb;
-      --card: #ffffff;
       --line: #e6e8ef;
       --text: #111827;
       --muted: #6b7280;
@@ -31,7 +30,6 @@
       color: var(--text);
     }
 
-    /* Layout: header fixed + chat scroll + composer fixed */
     .app {
       height: 100%;
       display: flex;
@@ -70,7 +68,7 @@
     main {
       flex: 1;
       overflow: auto;
-      padding: 14px 14px calc(92px + var(--safe-bottom)); /* space for composer */
+      padding: 14px 14px calc(92px + var(--safe-bottom));
     }
 
     .chat {
@@ -87,16 +85,28 @@
     .row.user { justify-content: flex-end; }
     .row.bot { justify-content: flex-start; }
 
+    /* ✅ max-width 제한을 msg가 아니라 bubble에서만 제어 */
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 100%;
+    }
+    .row.user .msg { align-items: flex-end; }
+
+    /* ✅ 말풍선 폭을 충분히 넓히고, 한글 줄바꿈 최적화 */
     .bubble {
-      max-width: min(78ch, 82%);
+      max-width: 90%;
       padding: 10px 12px;
       border-radius: var(--radius);
       border: 1px solid var(--bot-line);
       background: var(--bot-bg);
       white-space: pre-wrap;
-      line-height: 1.35;
+      line-height: 1.4;
       box-shadow: var(--shadow);
-      word-break: break-word;
+
+      word-break: keep-all;      /* 한글 단어 중간 줄바꿈 최소화 */
+      overflow-wrap: break-word; /* 긴 문자열/URL은 적절히 줄바꿈 */
     }
 
     .row.user .bubble {
@@ -110,14 +120,6 @@
       color: var(--muted);
     }
 
-    .msg {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      max-width: 82%;
-    }
-    .row.user .msg { align-items: flex-end; }
-
     .empty {
       margin-top: 18px;
       padding: 16px;
@@ -127,7 +129,6 @@
       background: rgba(255,255,255,.6);
     }
 
-    /* Composer fixed bottom */
     .composer {
       position: sticky;
       bottom: 0;
@@ -179,19 +180,14 @@
       cursor: not-allowed;
     }
 
-    .hint {
-      margin-top: 8px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    /* Mobile tweaks */
     @media (max-width: 480px) {
       .title { font-size: 18px; }
       main { padding: 12px 12px calc(92px + var(--safe-bottom)); }
-      .bubble { max-width: 88%; }
-      textarea { font-size: 16px; } /* keep 16 to prevent iOS zoom */
+      textarea { font-size: 16px; }
       button { min-width: 64px; padding: 12px 12px; }
+
+      /* ✅ 모바일에서는 말풍선을 더 넓게 */
+      .bubble { max-width: 94%; }
     }
   </style>
 </head>
@@ -205,7 +201,7 @@
       </div>
     </header>
 
-    <main>
+    <main id="main">
       <div class="wrap">
         <div class="chat" id="chat"></div>
         <div class="empty" id="empty">
@@ -225,10 +221,10 @@
   </div>
 
   <script>
-    // 🔴 여기에 n8n Production Webhook URL을 넣으세요 (webhook-test 말고 webhook)
-    // 예: https://billylee.app.n8n.cloud/webhook/ask
+    // ✅ n8n Production Webhook URL (webhook-test 아님)
     const WEBHOOK_URL = "https://billylee.app.n8n.cloud/webhook/ask";
 
+    const mainEl = document.getElementById("main");
     const chatEl = document.getElementById("chat");
     const emptyEl = document.getElementById("empty");
     const qEl = document.getElementById("q");
@@ -240,6 +236,12 @@
       const hh = String(d.getHours()).padStart(2, "0");
       const mm = String(d.getMinutes()).padStart(2, "0");
       return `${hh}:${mm}`;
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        mainEl.scrollTop = mainEl.scrollHeight;
+      });
     }
 
     function addMessage(role, text) {
@@ -264,10 +266,7 @@
       row.appendChild(msg);
       chatEl.appendChild(row);
 
-      // scroll to bottom
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
-      });
+      scrollToBottom();
     }
 
     async function send() {
@@ -286,12 +285,9 @@
           body: JSON.stringify({ question })
         });
 
-        const raw = await res.text(); // 항상 텍스트로 먼저 받기
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status} - ${raw}`);
-        }
+        const raw = await res.text();
+        if (!res.ok) throw new Error(`HTTP ${res.status} - ${raw}`);
 
-        // JSON이면 파싱, 아니면 텍스트 그대로 사용
         let data;
         try { data = JSON.parse(raw); }
         catch { data = { answer: raw }; }
@@ -309,7 +305,6 @@
 
     sendBtn.addEventListener("click", send);
 
-    // Enter=전송, Shift+Enter=줄바꿈
     qEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
@@ -317,10 +312,7 @@
       }
     });
 
-    // 초기 상태: 아직 메시지 없으면 empty 안내 보이기
-    if (!chatEl.children.length) {
-      emptyEl.style.display = "block";
-    }
+    if (!chatEl.children.length) emptyEl.style.display = "block";
   </script>
 </body>
 </html>
