@@ -76,8 +76,7 @@
     .bubble {
       display: block;
       width: fit-content;
-      /* ✅ 수정: 질문이 짧아도 답변창과 비슷하게 보이도록 최소 너비 설정 */
-      min-width: 260px; 
+      min-width: 260px; /* 말풍선 최소 너비 확보 */
       max-width: 100%; 
       padding: 12px 16px;
       border-radius: var(--radius);
@@ -89,10 +88,12 @@
       word-break: break-all;
     }
 
+    /* ✅ 수정 포인트: 사용자 말풍선 설정 */
     .row.user .bubble {
       background: var(--user-bg);
       border-color: var(--user-line);
-      text-align: left;
+      text-align: right; /* 텍스트를 오른쪽으로 정렬 */
+      margin-left: auto;
     }
 
     .meta { margin-top: 4px; font-size: 11px; color: var(--muted); }
@@ -152,7 +153,7 @@
 
     @media (max-width: 480px) {
       .title { font-size: 18px; }
-      .bubble { min-width: 200px; } /* 모바일 환경 고려 */
+      .bubble { min-width: 200px; }
     }
   </style>
 </head>
@@ -166,7 +167,7 @@
             <h1 class="title">사내 문서 검색 챗봇</h1>
             <div class="status" id="status">대기 중…</div>
           </div>
-          </div>
+        </div>
       </div>
     </header>
 
