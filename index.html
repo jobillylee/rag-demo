@@ -71,3 +71,257 @@
       flex: 1;
       overflow: auto;
       padding: 14px 14px calc(92px + var(--safe-bottom)); /* space for composer */
+    }
+
+    .chat {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .row {
+      display: flex;
+      width: 100%;
+    }
+
+    .row.user { justify-content: flex-end; }
+    .row.bot { justify-content: flex-start; }
+
+    .bubble {
+      max-width: min(78ch, 82%);
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid var(--bot-line);
+      background: var(--bot-bg);
+      white-space: pre-wrap;
+      line-height: 1.35;
+      box-shadow: var(--shadow);
+      word-break: break-word;
+    }
+
+    .row.user .bubble {
+      background: var(--user-bg);
+      border-color: var(--user-line);
+    }
+
+    .meta {
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-width: 82%;
+    }
+    .row.user .msg { align-items: flex-end; }
+
+    .empty {
+      margin-top: 18px;
+      padding: 16px;
+      border: 1px dashed var(--line);
+      border-radius: var(--radius);
+      color: var(--muted);
+      background: rgba(255,255,255,.6);
+    }
+
+    /* Composer fixed bottom */
+    .composer {
+      position: sticky;
+      bottom: 0;
+      z-index: 20;
+      background: rgba(246,247,251,.92);
+      backdrop-filter: blur(8px);
+      border-top: 1px solid var(--line);
+      padding: 10px 14px calc(10px + var(--safe-bottom));
+    }
+
+    .composer .bar {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    textarea {
+      flex: 1;
+      min-height: 44px;
+      max-height: 120px;
+      resize: none;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      padding: 12px 12px;
+      font-size: 16px;
+      outline: none;
+      background: #fff;
+    }
+
+    textarea:focus {
+      border-color: #b8c7ff;
+      box-shadow: 0 0 0 4px rgba(184,199,255,.35);
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      background: #111827;
+      color: #fff;
+      min-width: 72px;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 480px) {
+      .title { font-size: 18px; }
+      main { padding: 12px 12px calc(92px + var(--safe-bottom)); }
+      .bubble { max-width: 88%; }
+      textarea { font-size: 16px; } /* keep 16 to prevent iOS zoom */
+      button { min-width: 64px; padding: 12px 12px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+    <header>
+      <div class="wrap">
+        <h1 class="title">사내 문서 검색 챗봇</h1>
+        <div class="status" id="status">대기 중…</div>
+      </div>
+    </header>
+
+    <main>
+      <div class="wrap">
+        <div class="chat" id="chat"></div>
+        <div class="empty" id="empty">
+          질문을 입력하고 전송을 누르면, n8n Webhook으로 요청을 보내고 응답을 여기 표시합니다.
+        </div>
+      </div>
+    </main>
+
+    <div class="composer">
+      <div class="wrap">
+        <div class="bar">
+          <textarea id="q" placeholder="질문을 입력하세요 (Enter=전송, Shift+Enter=줄바꿈)"></textarea>
+          <button id="send">전송</button>
+        </div>
+        <div class="hint">면접 시연 팁: “Webhook으로 질문 → n8n이 응답(JSON)” 흐름을 보여주면 좋아요.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 🔴 여기에 n8n Production Webhook URL을 넣으세요 (webhook-test 말고 webhook)
+    // 예: https://billylee.app.n8n.cloud/webhook/ask
+    const WEBHOOK_URL = "https://YOUR-N8N-DOMAIN.n8n.cloud/webhook/ask";
+
+    const chatEl = document.getElementById("chat");
+    const emptyEl = document.getElementById("empty");
+    const qEl = document.getElementById("q");
+    const sendBtn = document.getElementById("send");
+    const statusEl = document.getElementById("status");
+
+    function formatTime(ts) {
+      const d = new Date(ts);
+      const hh = String(d.getHours()).padStart(2, "0");
+      const mm = String(d.getMinutes()).padStart(2, "0");
+      return `${hh}:${mm}`;
+    }
+
+    function addMessage(role, text) {
+      emptyEl.style.display = "none";
+
+      const row = document.createElement("div");
+      row.className = "row " + role;
+
+      const msg = document.createElement("div");
+      msg.className = "msg";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+      bubble.textContent = text;
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = `${role === "user" ? "나" : "봇"} · ${formatTime(Date.now())}`;
+
+      msg.appendChild(bubble);
+      msg.appendChild(meta);
+      row.appendChild(msg);
+      chatEl.appendChild(row);
+
+      // scroll to bottom
+      requestAnimationFrame(() => {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+      });
+    }
+
+    async function send() {
+      const question = (qEl.value || "").trim();
+      if (!question) return;
+
+      addMessage("user", question);
+      qEl.value = "";
+      statusEl.textContent = "전송 중…";
+      sendBtn.disabled = true;
+
+      try {
+        const res = await fetch(WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ question })
+        });
+
+        const raw = await res.text(); // 항상 텍스트로 먼저 받기
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status} - ${raw}`);
+        }
+
+        // JSON이면 파싱, 아니면 텍스트 그대로 사용
+        let data;
+        try { data = JSON.parse(raw); }
+        catch { data = { answer: raw }; }
+
+        addMessage("bot", data.answer ?? "(answer 없음)");
+        statusEl.textContent = "완료";
+      } catch (err) {
+        addMessage("bot", "에러: " + String(err.message || err));
+        statusEl.textContent = "에러 발생";
+      } finally {
+        sendBtn.disabled = false;
+        qEl.focus();
+      }
+    }
+
+    sendBtn.addEventListener("click", send);
+
+    // Enter=전송, Shift+Enter=줄바꿈
+    qEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send();
+      }
+    });
+
+    // 초기 상태: 아직 메시지 없으면 empty 안내 보이기
+    if (!chatEl.children.length) {
+      emptyEl.style.display = "block";
+    }
+  </script>
+</body>
+</html>
